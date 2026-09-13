@@ -107,3 +107,4 @@ venv.bak/
 # mypy
 .mypy_cache/
 
+notebooks/02_deeplearning/01_mlp/result.md
