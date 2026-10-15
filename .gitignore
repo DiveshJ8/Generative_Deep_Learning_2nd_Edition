@@ -144,3 +144,15 @@ notebooks/03_vae/01_autoencoder/report_images/sample_4_sandal_comparison.png
 notebooks/03_vae/01_autoencoder/report_images/sample_5_pullover_comparison.png
 scripts/autoencoder_assignment_report.py
 scripts/export_autoencoder_notebook_images.py
+notebooks/04_gan/03_cgan/cgan_updated.ipynb
+notebooks/05_autoregressive/01_lstm/report.md
+notebooks/05_autoregressive/01_lstm/requirement-1.md
+notebooks/05_autoregressive/01_lstm/result.md
+notebooks/06_normflow/01_realnvp/output_modified/*
+notebooks/06_normflow/01_realnvp/generate_apa7_report_docx.py
+notebooks/06_normflow/01_realnvp/realnvp_analysis_report.docx
+notebooks/06_normflow/01_realnvp/realnvp_modified.ipynb
+notebooks/06_normflow/01_realnvp/Report_summary.docx
+notebooks/06_normflow/01_realnvp/report.docx
+notebooks/06_normflow/01_realnvp/report.md
+notebooks/06_normflow/01_realnvp/requirement-realnvp.md
