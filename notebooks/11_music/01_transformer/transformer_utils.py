@@ -20,7 +20,8 @@ def parse_midi_files(file_list, parser, seq_len, parsed_data_path=None):
         notes.append("START")
         durations.append("0.0")
 
-        for element in score.flat:
+        elements = score.flatten() if hasattr(score, "flatten") else score.flat
+        for element in elements:
             note_name = None
             duration_name = None
 
@@ -191,3 +192,83 @@ class SinePositionEncoding(keras.layers.Layer):
             }
         )
         return config
+
+
+# ---------------------------------------------------------------------------
+# Shared helpers for the baseline-vs-modified comparison
+# ---------------------------------------------------------------------------
+def split_sequences(notes, durations, seq_len, val_frac=0.1):
+    """Hold out the final `val_frac` of the (file-ordered) sequence windows.
+
+    Windows overlap heavily, so a random split would leak. We split on the
+    time axis and leave a gap of `seq_len` windows so that no validation
+    window shares a token with any training window.
+    """
+    n = len(notes)
+    cut = int(n * (1 - val_frac))
+    gap = seq_len
+    return (
+        (notes[:cut], durations[:cut]),
+        (notes[cut + gap :], durations[cut + gap :]),
+    )
+
+
+def tokenize_sequences(notes, durations):
+    """Fit one TextVectorization layer per stream. Returns
+    [(vectorizer, vocab), (vectorizer, vocab)] for notes and durations.
+    Use `encode_with` to integer-encode all sequences once, up front.
+    """
+    out = []
+    for elements in (notes, durations):
+        vec = keras.layers.TextVectorization(standardize=None, output_mode="int")
+        vec.adapt(tf.data.Dataset.from_tensor_slices(elements).batch(1024))
+        out.append((vec, vec.get_vocabulary()))
+    return out
+
+
+def encode_with(vec, elements):
+    import numpy as np
+
+    ids = vec(tf.constant(elements))
+    return ids.numpy().astype(np.int32)
+
+
+def generation_metrics(generated_notes, generated_durations):
+    """Simple, reproducible quality statistics for a list of generated samples.
+
+    generated_notes / generated_durations: list (one per sample) of token lists.
+    Returns means over samples of:
+      unique_notes      distinct note tokens
+      unique_durations  distinct duration tokens
+      rep_trigram_rate  share of 3-grams that already occurred earlier
+      longest_run       longest run of one identical note token
+      top_token_share   share taken by the single most frequent note token
+    """
+    import numpy as np
+    from collections import Counter
+
+    rows = []
+    for ns, ds in zip(generated_notes, generated_durations):
+        ns = [str(x) for x in ns]
+        tri = [tuple(ns[i : i + 3]) for i in range(len(ns) - 2)]
+        rep = (len(tri) - len(set(tri))) / max(len(tri), 1)
+        run = best = 1
+        for a, b in zip(ns, ns[1:]):
+            run = run + 1 if a == b else 1
+            best = max(best, run)
+        top = Counter(ns).most_common(1)[0][1] / max(len(ns), 1)
+        rows.append(
+            (len(set(ns)), len(set(map(str, ds))), rep, best, top)
+        )
+    arr = np.array(rows, dtype=float)
+    names = [
+        "unique_notes",
+        "unique_durations",
+        "rep_trigram_rate",
+        "longest_run",
+        "top_token_share",
+    ]
+    return {
+        k: {"mean": float(arr[:, i].mean()), "std": float(arr[:, i].std())}
+        for i, k in enumerate(names)
+    }
